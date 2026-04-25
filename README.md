@@ -5,9 +5,7 @@ This stack avoids RadioLib for WM1302 by using:
 - A local bidirectional bridge (`bridge/meshcore_semtech_bridge.py`)
 - MeshCore KISS protocol framing on the host side
 
-## Why this design
 
-MeshCore expects a bidirectional radio backend (RX + TX raw packet semantics). The bridge now speaks MeshCore-style KISS framing, not HTTP.
 
 ## Data paths
 
