@@ -1,0 +1,16 @@
+[Unit]
+Description=WM1302 SX1302 Packet Forwarder
+After=network-online.target meshcore-semtech-bridge.service
+Wants=network-online.target meshcore-semtech-bridge.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/sx1302_hal/packet_forwarder
+ExecStart=/opt/sx1302_hal/packet_forwarder/lora_pkt_fwd -c /opt/meshcore-wm1302/config/global_conf.json
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

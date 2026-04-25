@@ -1,0 +1,17 @@
+[Unit]
+Description=MeshCore Semtech UDP Bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/opt/meshcore-wm1302
+EnvironmentFile=/etc/default/meshcore-semtech-bridge
+ExecStart=/usr/bin/python3 /opt/meshcore-wm1302/bridge/meshcore_semtech_bridge.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

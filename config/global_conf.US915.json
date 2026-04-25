@@ -1,0 +1,122 @@
+{
+    "SX130x_conf": {
+        "lorawan_public": true,
+        "clksrc": 1,
+        "antenna_gain": 0,
+        "fine_timestamp": {
+            "enable": false
+        },
+        "radio_0": {
+            "enable": true,
+            "type": "SX1250",
+            "freq": 904700000,
+            "rssi_offset": -215.4,
+            "tx_enable": true,
+            "tx_freq_min": 902000000,
+            "tx_freq_max": 928000000,
+            "tx_gain_lut": [
+                {
+                    "rf_power": 10,
+                    "pa_gain": 0,
+                    "pwr_idx": 10
+                },
+                {
+                    "rf_power": 14,
+                    "pa_gain": 0,
+                    "pwr_idx": 15
+                },
+                {
+                    "rf_power": 20,
+                    "pa_gain": 0,
+                    "pwr_idx": 24
+                },
+                {
+                    "rf_power": 26,
+                    "pa_gain": 0,
+                    "pwr_idx": 31
+                }
+            ]
+        },
+        "radio_1": {
+            "enable": true,
+            "type": "SX1250",
+            "freq": 905300000,
+            "rssi_offset": -215.4,
+            "tx_enable": false
+        },
+        "chan_multiSF_All": {
+            "spreading_factor_enable": [
+                7,
+                8,
+                9,
+                10
+            ]
+        },
+        "chan_multiSF_0": {
+            "enable": true,
+            "radio": 0,
+            "if": -400000
+        },
+        "chan_multiSF_1": {
+            "enable": true,
+            "radio": 0,
+            "if": -200000
+        },
+        "chan_multiSF_2": {
+            "enable": true,
+            "radio": 0,
+            "if": 0
+        },
+        "chan_multiSF_3": {
+            "enable": true,
+            "radio": 0,
+            "if": 200000
+        },
+        "chan_multiSF_4": {
+            "enable": true,
+            "radio": 1,
+            "if": -200000
+        },
+        "chan_multiSF_5": {
+            "enable": true,
+            "radio": 1,
+            "if": 0
+        },
+        "chan_multiSF_6": {
+            "enable": true,
+            "radio": 1,
+            "if": 200000
+        },
+        "chan_multiSF_7": {
+            "enable": true,
+            "radio": 1,
+            "if": 400000
+        },
+        "chan_Lora_std": {
+            "enable": false,
+            "radio": 0,
+            "if": 300000,
+            "bandwidth": 500000,
+            "spread_factor": 8
+        },
+        "chan_FSK": {
+            "enable": false,
+            "radio": 0,
+            "if": 300000,
+            "bandwidth": 125000,
+            "datarate": 50000
+        }
+    },
+    "gateway_conf": {
+        "gateway_ID": "AA555A0000000000",
+        "server_address": "127.0.0.1",
+        "serv_port_up": 1700,
+        "serv_port_down": 1700,
+        "keepalive_interval": 10,
+        "stat_interval": 30,
+        "push_timeout_ms": 100,
+        "forward_crc_valid": true,
+        "forward_crc_error": false,
+        "forward_crc_disabled": false
+    }
+}

@@ -1,0 +1,22 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS/editor artifacts
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Local runtime and logs
+*.log
+*.pid
+
+# Build/download artifacts
+sx1302_hal/
