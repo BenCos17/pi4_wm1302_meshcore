@@ -45,6 +45,15 @@ fi
 pushd /opt/sx1302_hal > /dev/null
 make clean || true
 make all
+
+# Ensure the reset script is in the place the HAL expects it
+cp "$SCRIPT_DIR/bridge/reset_lgw.sh" /opt/sx1302_hal/packet_forwarder/reset_lgw.sh
+chmod +x /opt/sx1302_hal/packet_forwarder/reset_lgw.sh
+
+# Ensure the config directory exists and has our working config
+mkdir -p /opt/meshcore-wm1302/config
+cp "$SCRIPT_DIR/config/global_conf.json" /opt/meshcore-wm1302/config/global_conf.json
+
 popd > /dev/null
 
 echo "[7/8] Installing default bridge env"
