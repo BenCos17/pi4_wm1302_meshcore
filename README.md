@@ -1,12 +1,3 @@
-# Raspberry Pi 4 WM1302 MeshCore Stack (No RadioLib)
-
-This stack avoids RadioLib for WM1302 by using:
-- Semtech sx1302 packet forwarder (`lora_pkt_fwd`)
-- A local bidirectional bridge (`bridge/meshcore_semtech_bridge.py`)
-- MeshCore KISS protocol framing on the host side
-
-
-
 ## Data paths
 
 - RX path: `WM1302 -> lora_pkt_fwd (PUSH_DATA) -> bridge -> KISS DATA (0x00)`
