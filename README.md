@@ -5,9 +5,7 @@ This stack avoids RadioLib for WM1302 by using:
 - A local bidirectional bridge (`bridge/meshcore_semtech_bridge.py`)
 - MeshCore KISS protocol framing on the host side
 
-## Why this design
 
-MeshCore expects a bidirectional radio backend (RX + TX raw packet semantics). The bridge now speaks MeshCore-style KISS framing, not HTTP.
 
 ## Data paths
 
@@ -59,6 +57,26 @@ Connect your MeshCore-side host/client to this endpoint using KISS framing.
 sudo journalctl -u meshcore-semtech-bridge -f
 sudo journalctl -u wm1302-pkt-fwd -f
 ```
+
+## Troubleshooting: "failed to open I2C for temperature sensor on port 0x39"
+
+The SX1302 HAL in SPI mode requires I2C access during startup. If I2C is disabled, packet forwarder exits with:
+
+- `ERROR: failed to open I2C for temperature sensor on port 0x39`
+- `ERROR: [main] failed to start the concentrator`
+
+Fix on Pi:
+
+```bash
+sudo raspi-config nonint do_i2c 0
+sudo apt-get install -y i2c-tools
+ls -l /dev/i2c-1
+sudo i2cdetect -y 1
+sudo systemctl restart wm1302-pkt-fwd
+sudo journalctl -u wm1302-pkt-fwd -n 80 --no-pager
+```
+
+If `/dev/i2c-1` is missing, reboot after enabling I2C.
 
 ## Configuration files
 

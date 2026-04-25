@@ -15,11 +15,12 @@ fi
 
 echo "[1/8] Installing OS packages"
 apt-get update
-apt-get install -y git build-essential pkg-config python3 python3-venv python3-pip libffi-dev libssl-dev
+apt-get install -y git build-essential pkg-config python3 python3-venv python3-pip libffi-dev libssl-dev i2c-tools
 
-echo "[2/8] Enabling SPI"
+echo "[2/8] Enabling SPI + I2C"
 if command -v raspi-config >/dev/null 2>&1; then
   raspi-config nonint do_spi 0 || true
+  raspi-config nonint do_i2c 0 || true
 fi
 
 if [[ ! -d "$STACK_DIR" ]]; then
