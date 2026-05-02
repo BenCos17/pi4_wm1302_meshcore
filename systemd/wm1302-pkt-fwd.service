@@ -7,8 +7,8 @@ Wants=network-online.target meshcore-semtech-bridge.service
 Type=simple
 User=root
 Group=root
-WorkingDirectory=/opt/sx1302_hal/packet_forwarder
-ExecStart=/opt/sx1302_hal/packet_forwarder/lora_pkt_fwd -c /opt/meshcore-wm1302/config/global_conf.json
+WorkingDirectory=/opt/meshcore-wm1302/bin
+ExecStart=/opt/meshcore-wm1302/bin/lora_pkt_fwd -c /opt/meshcore-wm1302/config/global_conf.json
 Restart=always
 RestartSec=2
 

@@ -91,6 +91,9 @@ class BridgeConfig:
     auto_repeat_require_crc_ok: bool
     auto_repeat_min_rssi: int
     auto_repeat_min_snr_x4: int
+    beacon_enabled: bool
+    beacon_interval_seconds: int
+    beacon_message: str
     log_level: str
 
 
@@ -122,6 +125,10 @@ class RuntimeState:
         self.auto_repeat_require_crc_ok = config.auto_repeat_require_crc_ok
         self.auto_repeat_min_rssi = config.auto_repeat_min_rssi
         self.auto_repeat_min_snr_x4 = config.auto_repeat_min_snr_x4
+
+        self.beacon_enabled = config.beacon_enabled
+        self.beacon_interval_seconds = config.beacon_interval_seconds
+        self.beacon_message = config.beacon_message
 
         self.repeat_seen: Dict[str, float] = {}
 
@@ -418,6 +425,31 @@ class SemtechUDPServer(socketserver.ThreadingUDPServer):
             )
 
         threading.Thread(target=_repeat_worker, name="auto-repeat", daemon=True).start()
+
+    def start_beacon(self) -> None:
+        """Start periodic beacon transmission in background thread."""
+        with self.state.lock:
+            if not self.state.beacon_enabled:
+                return
+            interval_seconds = self.state.beacon_interval_seconds
+            message = self.state.beacon_message
+
+        def _beacon_worker() -> None:
+            try:
+                payload = message.encode("utf-8")
+                while True:
+                    time.sleep(interval_seconds)
+                    ok = self.send_txpk(payload, immediate=True)
+                    logging.info(
+                        "BEACON %s len=%d interval=%ds",
+                        "sent" if ok else "dropped",
+                        len(payload),
+                        interval_seconds,
+                    )
+            except Exception as e:
+                logging.error("Beacon thread error: %s", e)
+
+        threading.Thread(target=_beacon_worker, name="beacon", daemon=True).start()
 
 
 class KISSTCPServer:
@@ -739,6 +771,22 @@ def parse_args() -> argparse.Namespace:
         default=int(os.getenv("AUTO_REPEAT_MIN_SNR_X4", "-128")),
     )
 
+    parser.add_argument(
+        "--beacon-enabled",
+        type=int,
+        choices=[0, 1],
+        default=int(os.getenv("BEACON_ENABLED", "0")),
+    )
+    parser.add_argument(
+        "--beacon-interval-seconds",
+        type=int,
+        default=int(os.getenv("BEACON_INTERVAL_SECONDS", "60")),
+    )
+    parser.add_argument(
+        "--beacon-message",
+        default=os.getenv("BEACON_MESSAGE", "MeshCore Beacon"),
+    )
+
     parser.add_argument("--log-level", default=os.getenv("LOG_LEVEL", "INFO"))
     return parser.parse_args()
 
@@ -769,6 +817,9 @@ def main() -> int:
         auto_repeat_require_crc_ok=args.auto_repeat_require_crc_ok == 1,
         auto_repeat_min_rssi=args.auto_repeat_min_rssi,
         auto_repeat_min_snr_x4=args.auto_repeat_min_snr_x4,
+        beacon_enabled=args.beacon_enabled == 1,
+        beacon_interval_seconds=args.beacon_interval_seconds,
+        beacon_message=args.beacon_message,
         log_level=args.log_level,
     )
 
@@ -786,6 +837,8 @@ def main() -> int:
 
     semtech_thread = threading.Thread(target=semtech_server.serve_forever, name="semtech-udp", daemon=True)
     semtech_thread.start()
+
+    semtech_server.start_beacon()
 
     try:
         kiss_server.serve_forever()

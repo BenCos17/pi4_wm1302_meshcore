@@ -46,6 +46,11 @@ pushd /opt/sx1302_hal > /dev/null
 make clean || true
 make all
 
+# Copy the compiled packet forwarder binary to the expected location
+mkdir -p /opt/meshcore-wm1302/bin
+cp /opt/sx1302_hal/packet_forwarder/lora_pkt_fwd /opt/meshcore-wm1302/bin/lora_pkt_fwd
+chmod +x /opt/meshcore-wm1302/bin/lora_pkt_fwd
+
 # Ensure the reset script is in the place the HAL expects it
 cp "$SCRIPT_DIR/bridge/reset_lgw.sh" /opt/sx1302_hal/packet_forwarder/reset_lgw.sh
 chmod +x /opt/sx1302_hal/packet_forwarder/reset_lgw.sh
@@ -77,6 +82,7 @@ systemctl enable wm1302-pkt-fwd.service
 
 echo "Installation complete."
 echo "Next:"
-echo "1) Copy region config to /opt/meshcore-wm1302/config/global_conf.json"
-echo "2) Edit /etc/default/meshcore-semtech-bridge"
+echo "1) Edit /etc/default/meshcore-semtech-bridge (optional beacon/TX settings)"
+echo "2) Choose region: cp /opt/meshcore-wm1302/config/global_conf.{US915,EU868}.json"
 echo "3) systemctl restart meshcore-semtech-bridge wm1302-pkt-fwd"
+echo "4) Check status: systemctl status meshcore-semtech-bridge wm1302-pkt-fwd"
