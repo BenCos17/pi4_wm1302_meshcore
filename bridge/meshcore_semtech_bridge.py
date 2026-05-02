@@ -46,6 +46,11 @@ KISS_TFEND = 0xDC
 KISS_TFESC = 0xDD
 
 KISS_CMD_DATA = 0x00
+KISS_CMD_TXDELAY = 0x01
+KISS_CMD_PERSISTENCE = 0x02
+KISS_CMD_SLOT_TIME = 0x03
+KISS_CMD_TXTAIL = 0x04
+KISS_CMD_FULL_DUPLEX = 0x05
 KISS_CMD_SETHARDWARE = 0x06
 
 # MeshCore KISS SetHardware commands/responses.
@@ -102,6 +107,13 @@ class RuntimeState:
         self.sf = config.tx_sf
         self.cr = config.tx_cr
         self.tx_power = config.tx_power_dbm
+
+        # KISS protocol parameters (per KA9Q/K3MC spec)
+        self.txdelay_10ms_units = 50  # Default: 500ms
+        self.persistence = 63  # Default: 0-255, all values have equal probability
+        self.slot_time_10ms_units = 10  # Default: 100ms
+        self.txtail_10ms_units = 0  # Default: 0ms
+        self.full_duplex = False  # Default: half-duplex
 
         self.auto_repeat_enabled = config.auto_repeat_enabled
         self.auto_repeat_min_delay_ms = config.auto_repeat_min_delay_ms
@@ -343,7 +355,7 @@ class SemtechUDPServer(socketserver.ThreadingUDPServer):
         self.state = state
         self.repeater = AutoRepeater(state)
 
-    def send_txpk(self, payload: bytes) -> bool:
+    def send_txpk(self, payload: bytes, immediate: bool = False) -> bool:
         with self.state.lock:
             addr = self.state.last_pull_addr
             freq_hz = self.state.freq_hz
@@ -357,7 +369,7 @@ class SemtechUDPServer(socketserver.ThreadingUDPServer):
             return False
 
         txpk = {
-            "imme": True,
+            "imme": immediate,
             "freq": freq_hz / 1_000_000.0,
             "rfch": 0,
             "powe": int(power),
@@ -375,13 +387,14 @@ class SemtechUDPServer(socketserver.ThreadingUDPServer):
         try:
             self.socket.sendto(header + body, addr)
             logging.info(
-                "TX -> WM1302 len=%d freq=%s sf=%s bw=%s cr=%s pwr=%s",
+                "TX -> WM1302 len=%d freq=%s sf=%s bw=%s cr=%s pwr=%s imme=%s",
                 len(payload),
                 freq_hz,
                 sf,
                 bw_hz,
                 cr,
                 power,
+                immediate,
             )
             return True
         except OSError as exc:
@@ -396,7 +409,7 @@ class SemtechUDPServer(socketserver.ThreadingUDPServer):
 
         def _repeat_worker() -> None:
             time.sleep(delay_seconds)
-            ok = self.send_txpk(payload)
+            ok = self.send_txpk(payload, immediate=True)
             logging.info(
                 "AUTO_REPEAT %s len=%d delay_ms=%d",
                 "sent" if ok else "dropped",
@@ -501,16 +514,98 @@ class KISSTCPServer:
             return
 
         if cmd == KISS_CMD_DATA:
-            ok = self.semtech_server.send_txpk(payload)
+            # Queue transmission with CSMA/TXDELAY
+            self._queue_transmission(payload)
+            return
+
+        if cmd == KISS_CMD_TXDELAY:
+            if len(payload) >= 1:
+                with self.state.lock:
+                    self.state.txdelay_10ms_units = payload[0]
+            return
+
+        if cmd == KISS_CMD_PERSISTENCE:
+            if len(payload) >= 1:
+                with self.state.lock:
+                    self.state.persistence = payload[0]
+            return
+
+        if cmd == KISS_CMD_SLOT_TIME:
+            if len(payload) >= 1:
+                with self.state.lock:
+                    self.state.slot_time_10ms_units = payload[0]
+            return
+
+        if cmd == KISS_CMD_TXTAIL:
+            if len(payload) >= 1:
+                with self.state.lock:
+                    self.state.txtail_10ms_units = payload[0]
+            return
+
+        if cmd == KISS_CMD_FULL_DUPLEX:
+            if len(payload) >= 1:
+                with self.state.lock:
+                    self.state.full_duplex = payload[0] != 0
+            return
+
+        if cmd == KISS_CMD_SETHARDWARE:
+            self._handle_sethardware(payload)
+
+    def _queue_transmission(self, payload: bytes) -> None:
+        """Queue transmission with CSMA/TXDELAY handling in background thread."""
+        def _tx_worker() -> None:
+            with self.state.lock:
+                txdelay_ms = self.state.txdelay_10ms_units * 10
+                persistence = self.state.persistence
+                slot_time_ms = self.state.slot_time_10ms_units * 10
+                full_duplex = self.state.full_duplex
+                txtail_ms = self.state.txtail_10ms_units * 10
+
+            # For now, use immediate transmission for full-duplex, and delayed for half-duplex
+            # Full CSMA/carrier sensing would require RX status from the modem
+            if full_duplex:
+                # Full duplex: wait TXDELAY then send immediately
+                if txdelay_ms > 0:
+                    time.sleep(txdelay_ms / 1000.0)
+                ok = self.semtech_server.send_txpk(payload, immediate=True)
+            else:
+                # Half duplex: implement p-persistent CSMA
+                # Note: actual carrier sensing would require modem feedback
+                # For now, use random backoff with persistence probability
+                attempt = 0
+                max_attempts = 10
+                
+                while attempt < max_attempts:
+                    # Wait TXDELAY
+                    if txdelay_ms > 0:
+                        time.sleep(txdelay_ms / 1000.0)
+                    
+                    # Check persistence: random value 0-255 vs P
+                    random_val = random.randint(0, 255)
+                    if random_val > persistence:
+                        # Don't transmit yet, wait slot time and retry
+                        if slot_time_ms > 0:
+                            time.sleep(slot_time_ms / 1000.0)
+                        attempt += 1
+                        continue
+                    
+                    # Persistence check passed, transmit
+                    ok = self.semtech_server.send_txpk(payload, immediate=True)
+                    break
+                else:
+                    # Max attempts exceeded
+                    ok = False
+                    logging.warning("CSMA max attempts exceeded, TX dropped")
+
+            # Send TxDone response
             send_kiss_frame(
                 self.state,
                 KISS_CMD_SETHARDWARE,
                 bytes([HW_RESP_TX_DONE, 0x01 if ok else 0x00]),
             )
-            return
 
-        if cmd == KISS_CMD_SETHARDWARE:
-            self._handle_sethardware(payload)
+        # Run in background thread to not block frame parsing
+        threading.Thread(target=_tx_worker, name="kiss-tx", daemon=True).start()
 
     def _handle_sethardware(self, payload: bytes) -> None:
         if not payload:
