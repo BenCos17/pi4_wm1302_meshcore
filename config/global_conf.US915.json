@@ -108,6 +108,8 @@
         }
     },
     "gateway_conf": {
+        "com_type": "SPI",
+        "com_path": "/dev/spidev0.0",
         "gateway_ID": "AA555A0000000000",
         "server_address": "127.0.0.1",
         "serv_port_up": 1700,
