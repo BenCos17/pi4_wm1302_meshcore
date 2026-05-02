@@ -52,7 +52,12 @@ chmod +x /opt/sx1302_hal/packet_forwarder/reset_lgw.sh
 
 # Ensure the config directory exists and has our working config
 mkdir -p /opt/meshcore-wm1302/config
-cp "$SCRIPT_DIR/config/global_conf.json" /opt/meshcore-wm1302/config/global_conf.json
+# Copy default EU868 config if no config exists yet
+if [[ ! -f /opt/meshcore-wm1302/config/global_conf.json ]]; then
+  if [[ -f "$SCRIPT_DIR/config/global_conf.EU868.json" ]]; then
+    cp "$SCRIPT_DIR/config/global_conf.EU868.json" /opt/meshcore-wm1302/config/global_conf.json
+  fi
+fi
 
 popd > /dev/null
 
